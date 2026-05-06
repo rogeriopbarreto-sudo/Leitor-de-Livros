@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\roger\\\\My Drive\\\\[06] Claude\\\\[Leitor de Livros]\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\roger\\\\My Drive\\\\[06] Claude\\\\[Leitor de Livros]\\\\Leitor de Livros Resources\" -Force)",
+      "Bash(Write-Output \"Pastas criadas.\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\roger\\My Drive\\[06] Claude",
+      "c:\\Users\\roger\\My Drive\\[06] Claude\\[Leitor de Livros]"
+    ]
+  }
+}
