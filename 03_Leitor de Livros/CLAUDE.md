@@ -14,7 +14,7 @@ Esta workstation gerencia a leitura e síntese de livros. Qualquer pedido relaci
 
 1. **Receber o pedido** — Confirmar título e autor do livro antes de começar. Se faltar o autor, pesquisar e confirmar.
 2. **Ativar a skill** — Invocar `/leitor-de-livros` para gerar o resumo e os pontos-chave do livro.
-3. **Criar a sub-pasta local** — Criar subpasta no Drive com o formato exato `Titulo do Livro - Autor` dentro de `[Leitor de Livros]/`. Esta é a sub-workstation do livro.
+3. **Criar a sub-pasta local** — Criar subpasta no Drive com o formato exato `Titulo do Livro - Autor` dentro de `03_Leitor de Livros/`. Esta é a sub-workstation do livro.
 4. **Registrar no Notion** — Criar uma página nova no projeto "Leitor de Livros" no Notion com:
    - Título da página: `Titulo do Livro — Autor`
    - Propriedades: Autor, Data de leitura (hoje), Status (Lido)
