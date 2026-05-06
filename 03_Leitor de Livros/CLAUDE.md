@@ -39,9 +39,9 @@ Ao escrever resumos de livros:
 Cada livro lido gera uma sub-pasta adjacente com o formato:
 
 ```
-[Leitor de Livros]/
+03_Leitor de Livros/
   Titulo do Livro - Autor/
     resumo.md
 ```
 
-Exemplo: `[Leitor de Livros]/Thinking Fast and Slow - Daniel Kahneman/resumo.md`
+Exemplo: `03_Leitor de Livros/Thinking Fast and Slow - Daniel Kahneman/resumo.md`

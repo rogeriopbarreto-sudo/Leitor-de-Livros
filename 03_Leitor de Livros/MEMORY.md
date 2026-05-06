@@ -23,4 +23,4 @@
 
 - **Idioma padrão dos resumos:** Português, salvo instrução contrária.
 - **Estrutura Notion:** Uma página por livro, todas sob o projeto "Leitor de Livros".
-- **Estrutura Drive:** Sub-pasta por livro dentro de `[Leitor de Livros]/`, formato `Titulo - Autor`.
+- **Estrutura Drive:** Sub-pasta por livro dentro de `03_Leitor de Livros/`, formato `Titulo - Autor`.
