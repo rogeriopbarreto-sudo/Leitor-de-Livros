@@ -13,6 +13,7 @@
             --text: #202124;
             --gray: #5f6368;
             --border: #dadce0;
+            --sidebar-w: 220px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,7 +25,92 @@
             color: var(--text);
         }
 
+        /* ── Layout shell ── */
+        .app-shell {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .history-panel {
+            width: var(--sidebar-w);
+            flex-shrink: 0;
+            background: #fafafa;
+            border-right: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-heading {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            color: var(--gray);
+            padding: 20px 16px 12px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .history-list { flex: 1; padding: 6px 0; }
+
+        .history-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: background .12s, border-color .12s;
+        }
+        .history-item:hover {
+            background: var(--blue-light);
+            border-left-color: var(--b1);
+        }
+        .history-item.active {
+            background: var(--blue-light);
+            border-left-color: var(--b2);
+        }
+
+        .history-date {
+            font-size: 10px;
+            color: var(--gray);
+            margin-bottom: 3px;
+            font-variant-numeric: tabular-nums;
+        }
+        .history-book-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--b2);
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .history-book-author {
+            font-size: 11px;
+            color: var(--gray);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-empty {
+            font-size: 12px;
+            color: var(--gray);
+            padding: 16px;
+            font-style: italic;
+            line-height: 1.5;
+        }
+
+        /* ── Main column ── */
         .page {
+            flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -34,13 +120,13 @@
         }
         .page.compact { padding-top: 56px; }
 
-        /* Logo */
+        /* ── Logo ── */
         .logo { text-align: center; margin-bottom: 38px; user-select: none; }
         .logo-title { font-size: 52px; font-weight: 300; letter-spacing: -1px; line-height: 1; }
         .logo-title .sp { display: inline-block; width: 18px; }
         .logo-by { font-size: 13px; color: var(--gray); margin-top: 9px; }
 
-        /* Search */
+        /* ── Search ── */
         .search-wrap { width: 100%; max-width: 580px; position: relative; }
 
         .search-input {
@@ -57,7 +143,7 @@
 
         .search-icon { position: absolute; right: 17px; top: 50%; transform: translateY(-50%); color: #9aa0a6; pointer-events: none; }
 
-        /* Dropdown */
+        /* ── Dropdown ── */
         .dropdown {
             position: absolute; top: calc(100% + 4px); left: 0; right: 0;
             background: #fff; border: 1px solid var(--border);
@@ -76,24 +162,24 @@
         .book-row:first-child { border-top: none; }
         .book-row:hover { background: var(--blue-light); }
 
-        /* Shared cover base (dropdown + header) */
+        /* ── Covers ── */
         .cover-sm { width: 38px; height: 52px; border-radius: 3px; flex-shrink: 0; object-fit: cover; box-shadow: 0 1px 5px rgba(0,0,0,.18); }
-        .cover-lg { width: 70px; height: 98px; border-radius: 5px; flex-shrink: 0; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+        .cover-lg { width: 58px; height: 82px; border-radius: 5px; flex-shrink: 0; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
         .cover-placeholder { background: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-        .cover-lg.cover-placeholder { font-size: 28px; background: var(--b1); }
+        .cover-lg.cover-placeholder { font-size: 24px; background: var(--b1); }
 
         .book-row-info { flex: 1; min-width: 0; }
         .book-row-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .book-row-author { font-size: 12px; color: var(--gray); margin-top: 2px; }
         .lang-badge { font-size: 10px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--blue-light); color: var(--b2); flex-shrink: 0; }
 
-        /* Results */
+        /* ── Results ── */
         .results { width: 100%; max-width: 680px; margin-top: 36px; display: none; }
         .results.visible { display: block; }
 
         .book-header {
-            display: flex; gap: 20px; align-items: flex-start;
-            padding: 20px 22px; border-radius: 16px; margin-bottom: 22px;
+            display: flex; gap: 18px; align-items: flex-start;
+            padding: 18px 20px; border-radius: 16px; margin-bottom: 22px;
             background: linear-gradient(135deg, var(--blue-light) 0%, #f0f4ff 100%);
             border: 1px solid rgba(66,133,244,.2);
         }
@@ -107,7 +193,7 @@
         }
         .amazon-link:hover { background: rgba(26,115,232,.08); }
 
-        /* Loader */
+        /* ── Loader ── */
         .loader { text-align: center; padding: 52px 0; }
         .dots { display: inline-flex; gap: 9px; }
         .dot { width: 11px; height: 11px; border-radius: 50%; animation: pulse 1.4s infinite ease-in-out; }
@@ -118,7 +204,7 @@
         @keyframes pulse { 0%,80%,100% { transform: scale(.55); opacity: .35; } 40% { transform: scale(1); opacity: 1; } }
         .loader p { margin-top: 18px; color: var(--gray); font-size: 14px; }
 
-        /* Summary */
+        /* ── Summary card ── */
         .summary-card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 30px 34px; line-height: 1.75; font-size: 15px; }
         .summary-card h2, .summary-card h3 {
             font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase;
@@ -136,40 +222,58 @@
         .error { color: #d93025; text-align: center; padding: 28px; font-size: 14px; }
 
         footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--gray); background: rgba(255,255,255,.95); backdrop-filter: blur(4px); padding: 13px; border-top: 1px solid var(--border); }
+
+        /* ── Responsive ── */
+        @media (max-width: 720px) {
+            .history-panel { display: none; }
+        }
     </style>
 </head>
 <body>
 
-<div class="page" id="page">
+<div class="app-shell">
 
-    <div class="logo">
-        <div class="logo-title">
-            <span style="color:#4285f4">L</span><span style="color:#0d47a1">e</span><span style="color:#1976d2">i</span><span style="color:#1a73e8">t</span><span style="color:#1565c0">o</span><span style="color:#2962ff">r</span>
-            <span class="sp"></span>
-            <span style="color:#0d47a1">d</span><span style="color:#1976d2">e</span>
-            <span class="sp"></span>
-            <span style="color:#4285f4">L</span><span style="color:#1565c0">i</span><span style="color:#1a73e8">v</span><span style="color:#1976d2">r</span><span style="color:#0d47a1">o</span><span style="color:#2962ff">s</span>
+    <!-- Sidebar: histórico -->
+    <aside class="history-panel">
+        <p class="history-heading">Últimos 10 livros</p>
+        <div class="history-list" id="historyList">
+            <p class="history-empty">Nenhum livro ainda.</p>
         </div>
-        <div class="logo-by">by Rogerio Barreto</div>
+    </aside>
+
+    <!-- Conteúdo principal -->
+    <div class="page" id="page">
+
+        <div class="logo">
+            <div class="logo-title">
+                <span style="color:#4285f4">L</span><span style="color:#0d47a1">e</span><span style="color:#1976d2">i</span><span style="color:#1a73e8">t</span><span style="color:#1565c0">o</span><span style="color:#2962ff">r</span>
+                <span class="sp"></span>
+                <span style="color:#0d47a1">d</span><span style="color:#1976d2">e</span>
+                <span class="sp"></span>
+                <span style="color:#4285f4">L</span><span style="color:#1565c0">i</span><span style="color:#1a73e8">v</span><span style="color:#1976d2">r</span><span style="color:#0d47a1">o</span><span style="color:#2962ff">s</span>
+            </div>
+            <div class="logo-by">by Rogerio Barreto</div>
+        </div>
+
+        <div class="search-wrap">
+            <input id="searchInput" class="search-input" type="text" placeholder="Título do Livro" autocomplete="off" spellcheck="false" maxlength="100"/>
+            <svg class="search-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <div class="dropdown" id="dropdown"></div>
+        </div>
+
+        <div class="results" id="results"></div>
     </div>
 
-    <div class="search-wrap">
-        <input id="searchInput" class="search-input" type="text" placeholder="Título do Livro" autocomplete="off" spellcheck="false" maxlength="100"/>
-        <svg class="search-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <div class="dropdown" id="dropdown"></div>
-    </div>
-
-    <div class="results" id="results"></div>
 </div>
 
 <footer>Leitor de Livros &mdash; by Rogerio Barreto</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
 <script>
-    const SERVER = '';  // same origin
-    let timer, books = [];
+    const SERVER = '';
+    let timer, books = [], historyItems = [], activeHistoryIndex = -1;
 
     const input    = document.getElementById('searchInput');
     const dropdown = document.getElementById('dropdown');
@@ -178,10 +282,73 @@
 
     marked.use({ breaks: true, gfm: true });
 
-    // XSS protection: escape all user-supplied or external strings before inserting in HTML
     const esc = s => String(s).replace(/[&<>"']/g, c =>
         ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])
     );
+
+    function fmtDate(iso) {
+        const [y, m, d] = iso.split('-');
+        const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        return `${parseInt(d)} ${months[parseInt(m) - 1]}`;
+    }
+
+    // ── History ──────────────────────────────────────────────
+
+    async function loadHistory() {
+        try {
+            const r = await fetch(`${SERVER}/api/history`);
+            historyItems = await r.json();
+            renderHistory();
+        } catch {}
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('historyList');
+        if (!historyItems.length) {
+            list.innerHTML = '<p class="history-empty">Nenhum livro ainda.</p>';
+            return;
+        }
+        list.innerHTML = historyItems.map((item, i) => `
+            <div class="history-item${i === activeHistoryIndex ? ' active' : ''}" onclick="showFromHistory(${i})">
+                <div class="history-date">${esc(fmtDate(item.date))}</div>
+                <div class="history-book-title">${esc(item.title)}</div>
+                <div class="history-book-author">${esc(item.author || 'Desconhecido')}</div>
+            </div>`).join('');
+    }
+
+    function setActiveHistory(i) {
+        activeHistoryIndex = i;
+        renderHistory();
+    }
+
+    function showFromHistory(i) {
+        const item = historyItems[i];
+        if (!item) return;
+
+        const q      = encodeURIComponent(`${item.title} ${item.author}`);
+        const amzURL = item.lang === 'pt'
+            ? `https://www.amazon.com.br/s?k=${q}`
+            : `https://www.amazon.com/s?k=${q}`;
+
+        input.value = item.title;
+        page.classList.add('compact');
+        setActiveHistory(i);
+
+        results.innerHTML = `
+            <div class="book-header">
+                ${coverLg(item.thumb)}
+                <div class="book-header-info">
+                    <h2>${esc(item.title)}</h2>
+                    <div class="hdr-author">${esc(item.author || 'Desconhecido')}</div>
+                    <a class="amazon-link" href="${esc(amzURL)}" target="_blank" rel="noopener noreferrer">🛒 Ver na Amazon</a>
+                </div>
+            </div>
+            <div class="summary-card">${marked.parse(item.summary)}</div>`;
+        results.classList.add('visible');
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Search ───────────────────────────────────────────────
 
     input.addEventListener('input', () => {
         clearTimeout(timer);
@@ -230,21 +397,26 @@
 
     function closeDD() { dropdown.classList.remove('open'); }
 
+    // ── Pick & summary ───────────────────────────────────────
+
     async function pick(i) {
         const b      = books[i];
         const title  = b.title  || 'Sem título';
         const author = (b.authors || []).join(', ') || 'Desconhecido';
         const lang   = b.lang   || 'en';
+        const thumb  = b.thumb  || '';
         const q      = encodeURIComponent(`${title} ${author}`);
         const amzURL = lang === 'pt' ? `https://www.amazon.com.br/s?k=${q}` : `https://www.amazon.com/s?k=${q}`;
 
         closeDD();
         input.value = title;
         page.classList.add('compact');
+        activeHistoryIndex = -1;
+        renderHistory();
 
         results.innerHTML = `
             <div class="book-header">
-                ${coverLg(b.thumb)}
+                ${coverLg(thumb)}
                 <div class="book-header-info">
                     <h2>${esc(title)}</h2>
                     <div class="hdr-author">${esc(author)}</div>
@@ -257,15 +429,15 @@
             </div>
             <div id="summaryCard" class="summary-card" style="display:none"></div>`;
         results.classList.add('visible');
-        await getSummary(title, author, lang);
+        await getSummary(title, author, lang, thumb);
     }
 
-    async function getSummary(title, author, lang) {
+    async function getSummary(title, author, lang, thumb) {
         try {
             const res  = await fetch(`${SERVER}/api/summary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, author, lang })
+                body: JSON.stringify({ title, author, lang, thumb })
             });
             const text = await res.text();
             let d;
@@ -276,10 +448,15 @@
             card.style.display = 'block';
             card.innerHTML = marked.parse(d.summary);
             card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            await loadHistory();
+            setActiveHistory(0);
         } catch (err) {
             document.getElementById('loader').innerHTML = `<p class="error"><strong>Erro:</strong> ${esc(err.message)}</p>`;
         }
     }
+
+    // ── Init ─────────────────────────────────────────────────
+    loadHistory();
 </script>
 </body>
 </html>

@@ -1,4 +1,7 @@
 import os
+import json
+import threading
+from datetime import date
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from flask_limiter import Limiter
@@ -11,6 +14,30 @@ dotenv_path = Path(__file__).parent / ".env"
 if not dotenv_path.exists():
     dotenv_path = Path(__file__).parent.parent / "Leitor de Livros Resources" / ".env"
 load_dotenv(dotenv_path)
+
+HISTORY_FILE = Path(__file__).parent / "history.json"
+_history_lock = threading.Lock()
+
+def _load_history():
+    try:
+        if HISTORY_FILE.exists():
+            return json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+def _save_history(entries):
+    try:
+        HISTORY_FILE.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        app.logger.error("history write error: %s", e)
+
+def _add_to_history(entry):
+    with _history_lock:
+        h = _load_history()
+        h = [e for e in h if not (e.get("title") == entry["title"] and e.get("author") == entry["author"])]
+        h.insert(0, entry)
+        _save_history(h[:10])
 
 app = Flask(__name__, static_folder=".")
 
@@ -58,6 +85,12 @@ def health():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/history")
+def history_list():
+    with _history_lock:
+        return jsonify(_load_history())
+
+
 @app.route("/api/search")
 @limiter.limit("30 per minute")
 def search():
@@ -91,6 +124,7 @@ def summary():
         title  = str(data.get("title",  "")).strip()[:200]
         author = str(data.get("author", "")).strip()[:200]
         lang   = str(data.get("lang",   "en"))[:5]
+        thumb  = str(data.get("thumb",  ""))[:500]
 
         if not title:
             return jsonify({"error": "Título obrigatório"}), 400
@@ -128,6 +162,18 @@ def summary():
         if not summary_text:
             app.logger.error("summary error: Anthropic returned empty content: %s", msg)
             return jsonify({"error": "Resposta vazia do Anthropic"}), 502
+
+        try:
+            _add_to_history({
+                "date":    date.today().isoformat(),
+                "title":   title,
+                "author":  author,
+                "thumb":   thumb,
+                "summary": summary_text,
+                "lang":    lang,
+            })
+        except Exception:
+            app.logger.exception("history add error")
 
         return jsonify({"summary": summary_text})
 
