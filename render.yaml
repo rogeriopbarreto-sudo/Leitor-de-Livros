@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: leitor-de-livros
+    runtime: python
+    rootDir: "03_Leitor de Livros/app"
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT server:app
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FLASK_DEBUG
+        value: "false"

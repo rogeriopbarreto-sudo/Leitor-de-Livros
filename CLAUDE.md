@@ -33,9 +33,9 @@ you write these files and notes mostly in portuguese
 
 | Workstation | Route here when I... |
 | :---- | :---- |
-| \[Email HQ\] | \[...need to draft, reply to, or review any email\] |
-| \[Personal Finances\] | \[...am working on budgets, spending, savings, or investments\] |
-| \[Leitor de Livros\] | \[...pedir resumo de um livro, registrar pontos-chave, ou organizar leituras no Notion\] |
+| 01_Email HQ | ...need to draft, reply to, or review any email |
+| 02_Personal Finances | ...am working on budgets, spending, savings, or investments |
+| 03_Leitor de Livros | ...pedir resumo de um livro, registrar pontos-chave, ou organizar leituras no Notion |
 
 ## References
 
@@ -47,7 +47,7 @@ you write these files and notes mostly in portuguese
 
 ## Creating New Workstations
 
-When I ask you to create a new workstation, create a subfolder with my workstation name and add these three items inside:
+When I ask you to create a new workstation, create a subfolder following the sequential naming pattern (NN_Workstation Name) and add these three items inside:
 
 1. **CLAUDE.md** with these sections in this order:  
      
@@ -56,16 +56,12 @@ When I ask you to create a new workstation, create a subfolder with my workstati
    - **Workflow** — Numbered steps for the primary task. Start simple; I'll refine over time.  
    - **Editorial Rules** — Always opens with: "Follow my voice principles in 00\_Resources (voice-principles.md)." Then add domain-specific writing rules that layer on top.
 
-   
-
 2. **MEMORY.md** with this structure:  
      
-   - Header: "\[Workstation Name\] Memory"  
+   - Header: "NN_Workstation Name Memory"  
    - Sections: Contacts (people relevant to this domain) and Key Decisions (reasoning behind choices).  
    - You populate this over time as we work. I don't write it manually.
 
-   
-
-3. **\[Workstation Name\] Resources/** — Empty folder. This is where reference files for this domain go.
+3. **NN_Workstation Name Resources/** — Empty folder. This is where reference files for this domain go.
 
 After creating the workstation, add a new row to the Routing Map above so future sessions load it automatically.  
