@@ -7,7 +7,10 @@ import anthropic
 import requests as req
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / "Leitor de Livros Resources" / ".env")
+dotenv_path = Path(__file__).parent / ".env"
+if not dotenv_path.exists():
+    dotenv_path = Path(__file__).parent.parent / "Leitor de Livros Resources" / ".env"
+load_dotenv(dotenv_path)
 
 app = Flask(__name__, static_folder=".")
 
@@ -92,18 +95,41 @@ def summary():
         if not title:
             return jsonify({"error": "Título obrigatório"}), 400
 
-        key = os.getenv("ANTHROPIC_API_KEY", "")
+        key = os.getenv("ANTHROPIC_API_KEY", "").strip()
         if not key:
-            return jsonify({"error": "Chave API não configurada"}), 500
+            app.logger.error("summary error: missing ANTHROPIC_API_KEY")
+            return jsonify({"error": "Chave API não configurada. Configure ANTHROPIC_API_KEY no ambiente ou em um arquivo .env."}), 500
 
         lang_label = "Português (Brasil)" if lang == "pt" else "Inglês"
-        msg = anthropic.Anthropic(api_key=key).messages.create(
+        client = anthropic.Anthropic(api_key=key)
+        msg = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=2048,
+            max_tokens=1024,
+            timeout=30,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": f'Livro: "{title}"\nAutor: {author}\nIdioma: {lang_label}'}]
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f'Livro: "{title}"\nAutor: {author}\nIdioma: {lang_label}'
+                        }
+                    ]
+                }
+            ]
         )
-        return jsonify({"summary": msg.content[0].text})
+
+        summary_text = ""
+        if msg and getattr(msg, "content", None):
+            first_block = msg.content[0]
+            summary_text = getattr(first_block, "text", "") or str(first_block)
+
+        if not summary_text:
+            app.logger.error("summary error: Anthropic returned empty content: %s", msg)
+            return jsonify({"error": "Resposta vazia do Anthropic"}), 502
+
+        return jsonify({"summary": summary_text})
 
     except anthropic.AuthenticationError:
         return jsonify({"error": "Chave API inválida"}), 401
@@ -111,8 +137,8 @@ def summary():
         return jsonify({"error": "Limite Anthropic atingido. Aguarde alguns minutos."}), 429
     except anthropic.BadRequestError as e:
         return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        app.logger.error("summary error: %s", e)
+    except Exception:
+        app.logger.exception("summary error")
         return jsonify({"error": "Erro interno no servidor"}), 500
 
 
