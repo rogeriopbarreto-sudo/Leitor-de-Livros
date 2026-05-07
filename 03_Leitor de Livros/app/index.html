@@ -592,6 +592,8 @@
     async function getSummary(title, author, lang, thumb) {
         const loader = document.getElementById('loader');
         const card   = document.getElementById('summaryCard');
+        let   summary = '';
+
         try {
             const res = await fetch(`${SERVER}/api/summary`, {
                 method: 'POST',
@@ -607,8 +609,6 @@
             const reader  = res.body.getReader();
             const decoder = new TextDecoder();
             let   buf     = '';
-            let   summary = '';
-            let   started = false;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -621,23 +621,24 @@
                     const d = JSON.parse(line.slice(6));
                     if (d.error) throw new Error(d.error);
                     if (d.chunk) {
-                        if (!started) {
-                            started = true;
+                        if (!summary) {
                             loader.style.display = 'none';
                             card.style.display = 'block';
                         }
                         summary += d.chunk;
                         card.innerHTML = render(summary);
                     }
-                    if (d.done) {
-                        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        await loadHistory();
-                        setActiveHistory(0);
-                    }
                 }
             }
         } catch (err) {
             loader.innerHTML = `<p class="error"><strong>Erro:</strong> ${esc(err.message)}</p>`;
+            return;
+        }
+
+        if (summary) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            await loadHistory();
+            setActiveHistory(0);
         }
     }
 
