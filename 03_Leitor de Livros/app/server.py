@@ -81,6 +81,16 @@ def index():
     return send_from_directory(".", "index.html")
 
 
+@app.route("/logo-title.png")
+def serve_logo():
+    return send_from_directory(".", "logo-title.png")
+
+
+@app.route("/hist-title.png")
+def serve_hist():
+    return send_from_directory(".", "hist-title.png")
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
