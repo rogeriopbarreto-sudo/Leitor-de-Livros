@@ -158,32 +158,6 @@ def search():
     except Exception as e:
         app.logger.error("OpenLibrary error: %s", e)
 
-    # Google Books — boa cobertura de livros brasileiros
-    try:
-        r = req.get(
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": q, "langRestrict": "pt", "maxResults": 6, "printType": "books"},
-            timeout=10
-        )
-        r.raise_for_status()
-        for item in r.json().get("items", []):
-            info = item.get("volumeInfo", {})
-            title = info.get("title", "")[:200]
-            if not title:
-                continue
-            cover_url = (info.get("imageLinks", {}).get("thumbnail") or
-                         info.get("imageLinks", {}).get("smallThumbnail") or "")
-            if cover_url.startswith("http://"):
-                cover_url = "https://" + cover_url[7:]
-            add_book({
-                "title":   title,
-                "authors": [a[:100] for a in info.get("authors", [])[:3]],
-                "lang":    "pt",
-                "thumb":   cover_url if cover_url.startswith("https://") else "",
-            })
-    except Exception as e:
-        app.logger.error("GoogleBooks error: %s", e)
-
     if not books:
         return jsonify({"error": "Nenhum livro encontrado"}), 404
 
@@ -210,7 +184,7 @@ def summary():
             return jsonify({"error": "Chave API não configurada. Configure ANTHROPIC_API_KEY no ambiente ou em um arquivo .env."}), 500
 
         lang_label = "Português (Brasil)" if lang == "pt" else "Inglês"
-        client = anthropic.Anthropic(api_key=key)
+        client = anthropic.Anthropic(api_key=key, max_retries=0)
         msg = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
