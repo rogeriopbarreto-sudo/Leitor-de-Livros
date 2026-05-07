@@ -5,7 +5,7 @@ import threading
 from datetime import date
 from pathlib import Path
 from urllib.parse import urlencode
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect, Response, stream_with_context
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import anthropic
@@ -164,78 +164,79 @@ def search():
     return jsonify(books[:6])
 
 
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
 @app.route("/api/summary", methods=["POST"])
 @limiter.limit("5 per minute;50 per day")
 def summary():
-    try:
-        data   = request.get_json(force=True, silent=True) or {}
-        title  = str(data.get("title",  "")).strip()[:200]
-        author = str(data.get("author", "")).strip()[:200]
-        lang   = "pt" if str(data.get("lang", "")).strip() == "pt" else "en"
-        thumb_raw = str(data.get("thumb", "")).strip()[:500]
-        thumb  = thumb_raw if thumb_raw.startswith("https://") else ""
+    data      = request.get_json(force=True, silent=True) or {}
+    title     = str(data.get("title",  "")).strip()[:200]
+    author    = str(data.get("author", "")).strip()[:200]
+    lang      = "pt" if str(data.get("lang", "")).strip() == "pt" else "en"
+    thumb_raw = str(data.get("thumb",  "")).strip()[:500]
+    thumb     = thumb_raw if thumb_raw.startswith("https://") else ""
 
-        if not title:
-            return jsonify({"error": "Título obrigatório"}), 400
+    if not title:
+        return jsonify({"error": "Título obrigatório"}), 400
 
-        key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-        if not key:
-            app.logger.error("summary error: missing ANTHROPIC_API_KEY")
-            return jsonify({"error": "Chave API não configurada. Configure ANTHROPIC_API_KEY no ambiente ou em um arquivo .env."}), 500
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        app.logger.error("summary: missing ANTHROPIC_API_KEY")
+        return jsonify({"error": "Chave API não configurada"}), 500
 
-        lang_label = "Português (Brasil)" if lang == "pt" else "Inglês"
-        client = anthropic.Anthropic(api_key=key, max_retries=0, timeout=90.0)
-        msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2048,
-            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f'Livro: "{title}"\nAutor: {author}\nIdioma: {lang_label}'
-                        }
-                    ]
-                }
-            ]
-        )
+    lang_label = "Português (Brasil)" if lang == "pt" else "Inglês"
 
-        summary_text = ""
-        if msg and getattr(msg, "content", None):
-            first_block = msg.content[0]
-            summary_text = getattr(first_block, "text", "") or str(first_block)
-
-        if not summary_text:
-            app.logger.error("summary error: Anthropic returned empty content: %s", msg)
-            return jsonify({"error": "Resposta vazia do Anthropic"}), 502
-
+    def generate():
+        chunks = []
         try:
-            _add_to_history({
-                "date":    date.today().isoformat(),
-                "title":   title,
-                "author":  author,
-                "thumb":   thumb,
-                "summary": summary_text,
-                "lang":    lang,
-            })
+            client = anthropic.Anthropic(api_key=api_key, max_retries=0, timeout=120.0)
+            with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=2048,
+                system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+                messages=[{"role": "user", "content": f'Livro: "{title}"\nAutor: {author}\nIdioma: {lang_label}'}]
+            ) as stream:
+                for text in stream.text_stream:
+                    chunks.append(text)
+                    yield _sse({"chunk": text})
+
+        except anthropic.AuthenticationError:
+            yield _sse({"error": "Chave API inválida"})
+            return
+        except anthropic.RateLimitError:
+            yield _sse({"error": "Limite Anthropic atingido. Aguarde alguns minutos."})
+            return
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError):
+            yield _sse({"error": "Tempo limite excedido. Tente novamente."})
+            return
         except Exception:
-            app.logger.exception("history add error")
+            app.logger.exception("summary stream error")
+            yield _sse({"error": "Erro interno no servidor"})
+            return
 
-        return jsonify({"summary": summary_text})
+        summary_text = "".join(chunks)
+        if summary_text:
+            try:
+                _add_to_history({
+                    "date":    date.today().isoformat(),
+                    "title":   title,
+                    "author":  author,
+                    "thumb":   thumb,
+                    "summary": summary_text,
+                    "lang":    lang,
+                })
+            except Exception:
+                app.logger.exception("history add error")
 
-    except anthropic.AuthenticationError:
-        return jsonify({"error": "Chave API inválida"}), 401
-    except anthropic.RateLimitError:
-        return jsonify({"error": "Limite Anthropic atingido. Aguarde alguns minutos."}), 429
-    except anthropic.BadRequestError as e:
-        return jsonify({"error": str(e)}), 400
-    except (anthropic.APITimeoutError, anthropic.APIConnectionError):
-        return jsonify({"error": "Tempo limite excedido. Tente novamente."}), 504
-    except Exception:
-        app.logger.exception("summary error")
-        return jsonify({"error": "Erro interno no servidor"}), 500
+        yield _sse({"done": True})
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 
 if __name__ == "__main__":

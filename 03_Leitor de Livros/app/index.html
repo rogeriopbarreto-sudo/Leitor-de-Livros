@@ -590,25 +590,54 @@
     }
 
     async function getSummary(title, author, lang, thumb) {
+        const loader = document.getElementById('loader');
+        const card   = document.getElementById('summaryCard');
         try {
-            const res  = await fetch(`${SERVER}/api/summary`, {
+            const res = await fetch(`${SERVER}/api/summary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, author, lang, thumb })
             });
-            const text = await res.text();
-            let d;
-            try { d = JSON.parse(text); } catch { throw new Error(`Erro ${res.status} no servidor`); }
-            if (!res.ok) throw new Error(d.error || res.statusText);
-            document.getElementById('loader').style.display = 'none';
-            const card = document.getElementById('summaryCard');
-            card.style.display = 'block';
-            card.innerHTML = render(d.summary);
-            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            await loadHistory();
-            setActiveHistory(0);
+
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                throw new Error(d.error || `Erro ${res.status} no servidor`);
+            }
+
+            const reader  = res.body.getReader();
+            const decoder = new TextDecoder();
+            let   buf     = '';
+            let   summary = '';
+            let   started = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop();
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const d = JSON.parse(line.slice(6));
+                    if (d.error) throw new Error(d.error);
+                    if (d.chunk) {
+                        if (!started) {
+                            started = true;
+                            loader.style.display = 'none';
+                            card.style.display = 'block';
+                        }
+                        summary += d.chunk;
+                        card.innerHTML = render(summary);
+                    }
+                    if (d.done) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        await loadHistory();
+                        setActiveHistory(0);
+                    }
+                }
+            }
         } catch (err) {
-            document.getElementById('loader').innerHTML = `<p class="error"><strong>Erro:</strong> ${esc(err.message)}</p>`;
+            loader.innerHTML = `<p class="error"><strong>Erro:</strong> ${esc(err.message)}</p>`;
         }
     }
 
