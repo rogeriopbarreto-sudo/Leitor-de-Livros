@@ -184,11 +184,10 @@ def summary():
             return jsonify({"error": "Chave API não configurada. Configure ANTHROPIC_API_KEY no ambiente ou em um arquivo .env."}), 500
 
         lang_label = "Português (Brasil)" if lang == "pt" else "Inglês"
-        client = anthropic.Anthropic(api_key=key, max_retries=0)
+        client = anthropic.Anthropic(api_key=key, max_retries=0, timeout=90.0)
         msg = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
-            timeout=30,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[
                 {
@@ -232,6 +231,8 @@ def summary():
         return jsonify({"error": "Limite Anthropic atingido. Aguarde alguns minutos."}), 429
     except anthropic.BadRequestError as e:
         return jsonify({"error": str(e)}), 400
+    except (anthropic.APITimeoutError, anthropic.APIConnectionError):
+        return jsonify({"error": "Tempo limite excedido. Tente novamente."}), 504
     except Exception:
         app.logger.exception("summary error")
         return jsonify({"error": "Erro interno no servidor"}), 500
