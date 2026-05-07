@@ -221,7 +221,7 @@
 
         .error { color: #d93025; text-align: center; padding: 28px; font-size: 14px; }
 
-        footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--gray); background: rgba(255,255,255,.95); backdrop-filter: blur(4px); padding: 13px; border-top: 1px solid var(--border); }
+        footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--gray); background: rgba(255,255,255,.95); backdrop-filter: blur(4px); padding: 10px 16px; border-top: 1px solid var(--border); line-height: 1.6; }
 
         /* ── Responsive ── */
         @media (max-width: 720px) {
@@ -268,7 +268,10 @@
 
 </div>
 
-<footer>Leitor de Livros &mdash; by Rogerio Barreto</footer>
+<footer>
+    Leitor de Livros &mdash; by Rogerio Barreto &nbsp;·&nbsp;
+    <span>Como afiliado Amazon, recebo uma comissão por compras qualificadas feitas através dos links deste site.</span>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
 <script>
@@ -326,9 +329,7 @@
         if (!item) return;
 
         const q      = encodeURIComponent(`${item.title} ${item.author}`);
-        const amzURL = item.lang === 'pt'
-            ? `https://www.amazon.com.br/s?k=${q}`
-            : `https://www.amazon.com/s?k=${q}`;
+        const amzURL = `/go/amz?q=${encodeURIComponent(`${item.title} ${item.author}`)}&l=${item.lang}`;
 
         input.value = item.title;
         page.classList.add('compact');
@@ -406,7 +407,7 @@
         const lang   = b.lang   || 'en';
         const thumb  = b.thumb  || '';
         const q      = encodeURIComponent(`${title} ${author}`);
-        const amzURL = lang === 'pt' ? `https://www.amazon.com.br/s?k=${q}` : `https://www.amazon.com/s?k=${q}`;
+        const amzURL = `/go/amz?q=${encodeURIComponent(`${title} ${author}`)}&l=${lang}`;
 
         closeDD();
         input.value = title;

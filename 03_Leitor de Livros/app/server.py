@@ -3,7 +3,8 @@ import json
 import threading
 from datetime import date
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory
+from urllib.parse import urlencode
+from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import anthropic
@@ -83,6 +84,16 @@ def index():
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+AMZ_TAG = {"pt": "rbarreto04-20", "en": "rbarreto760b-20"}
+AMZ_BASE = {"pt": "https://www.amazon.com.br/s", "en": "https://www.amazon.com/s"}
+
+@app.route("/go/amz")
+def go_amz():
+    q    = request.args.get("q", "").strip()[:300]
+    lang = "pt" if request.args.get("l", "en") == "pt" else "en"
+    return redirect(f"{AMZ_BASE[lang]}?{urlencode({'k': q, 'tag': AMZ_TAG[lang]})}", 302)
 
 
 @app.route("/api/history")
