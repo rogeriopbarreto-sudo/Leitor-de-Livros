@@ -64,7 +64,7 @@ Ideias ou frases mais impactantes em blockquote (> ...). Citações diretas ou p
 ## Aplicações Práticas
 4 a 6 bullet points específicos e acionáveis para o dia a dia.
 
-Regras: seja denso em conteúdo. Varie os verbos: propõe, demonstra, questiona, defende, mostra, explora, revela. Não repita "o autor argumenta que" mais de uma vez. Sem avaliação pessoal."""
+Regras: nao pule nenhum item acima, quero as 4 secoes sempre.  seja denso em conteúdo. Varie os verbos: propõe, demonstra, questiona, defende, mostra, explora, revela. Não repita "o autor argumenta que" mais de uma vez. Sem avaliação pessoal."""
 
 
 @app.after_request
@@ -151,8 +151,9 @@ def summary():
         data   = request.get_json(force=True, silent=True) or {}
         title  = str(data.get("title",  "")).strip()[:200]
         author = str(data.get("author", "")).strip()[:200]
-        lang   = str(data.get("lang",   "en"))[:5]
-        thumb  = str(data.get("thumb",  ""))[:500]
+        lang   = "pt" if str(data.get("lang", "")).strip() == "pt" else "en"
+        thumb_raw = str(data.get("thumb", "")).strip()[:500]
+        thumb  = thumb_raw if thumb_raw.startswith("https://") else ""
 
         if not title:
             return jsonify({"error": "Título obrigatório"}), 400

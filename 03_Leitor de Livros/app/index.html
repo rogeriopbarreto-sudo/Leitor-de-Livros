@@ -243,9 +243,10 @@
             background: rgba(0,0,0,.4);
             z-index: 350;
             opacity: 0;
+            pointer-events: none;
             transition: opacity .25s;
         }
-        .sheet-overlay.open { opacity: 1; }
+        .sheet-overlay.open { opacity: 1; pointer-events: auto; }
 
         /* ── Mobile: bottom sheet ── */
         .history-sheet {
@@ -387,6 +388,7 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.3/dist/purify.min.js"></script>
 <script>
     const SERVER = '';
     let timer, books = [], historyItems = [], activeHistoryIndex = -1;
@@ -397,6 +399,7 @@
     const page     = document.getElementById('page');
 
     marked.use({ breaks: true, gfm: true });
+    const render = md => DOMPurify.sanitize(marked.parse(md));
 
     const esc = s => String(s).replace(/[&<>"']/g, c =>
         ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])
@@ -493,7 +496,7 @@
                     <a class="amazon-link" href="${esc(amzURL)}" target="_blank" rel="noopener noreferrer">🛒 Ver na Amazon</a>
                 </div>
             </div>
-            <div class="summary-card">${marked.parse(item.summary)}</div>`;
+            <div class="summary-card">${render(item.summary)}</div>`;
         results.classList.add('visible');
         results.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -590,7 +593,7 @@
             document.getElementById('loader').style.display = 'none';
             const card = document.getElementById('summaryCard');
             card.style.display = 'block';
-            card.innerHTML = marked.parse(d.summary);
+            card.innerHTML = render(d.summary);
             card.scrollIntoView({ behavior: 'smooth', block: 'start' });
             await loadHistory();
             setActiveHistory(0);
