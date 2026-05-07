@@ -78,7 +78,14 @@ def security_headers(r):
 
 @app.route("/")
 def index():
-    return send_from_directory(".", "index.html")
+    html = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
+    base = request.url_root.rstrip("/")
+    return html.replace("__BASE_URL__", base), 200, {"Content-Type": "text/html; charset=utf-8"}
+
+
+@app.route("/favicon.svg")
+def serve_favicon():
+    return send_from_directory(".", "favicon.svg", mimetype="image/svg+xml")
 
 
 @app.route("/logo-title.png")
