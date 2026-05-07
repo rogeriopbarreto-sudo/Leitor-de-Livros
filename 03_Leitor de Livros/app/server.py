@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import threading
 from datetime import date
@@ -119,12 +120,27 @@ def history_list():
         return jsonify(_load_history())
 
 
+def _norm_title(s):
+    return re.sub(r'\W+', ' ', s.lower()).strip()[:50]
+
+
 @app.route("/api/search")
 @limiter.limit("30 per minute")
 def search():
     q = request.args.get("q", "").strip()[:100]
     if not q:
         return jsonify([])
+
+    books = []
+    seen = set()
+
+    def add_book(b):
+        key = _norm_title(b["title"])
+        if key and key not in seen:
+            seen.add(key)
+            books.append(b)
+
+    # Open Library
     try:
         r = req.get(
             "https://openlibrary.org/search.json",
@@ -132,16 +148,46 @@ def search():
             timeout=10
         )
         r.raise_for_status()
-        books = [{
-            "title":   d.get("title", "")[:200],
-            "authors": [a[:100] for a in d.get("author_name", [])[:3]],
-            "lang":    "pt" if any(l in ("por", "pt") for l in d.get("language", [])) else "en",
-            "thumb":   f"https://covers.openlibrary.org/b/id/{d['cover_i']}-M.jpg" if d.get("cover_i") else "",
-        } for d in r.json().get("docs", [])]
-        return jsonify(books)
+        for d in r.json().get("docs", []):
+            add_book({
+                "title":   d.get("title", "")[:200],
+                "authors": [a[:100] for a in d.get("author_name", [])[:3]],
+                "lang":    "pt" if any(l in ("por", "pt") for l in d.get("language", [])) else "en",
+                "thumb":   f"https://covers.openlibrary.org/b/id/{d['cover_i']}-M.jpg" if d.get("cover_i") else "",
+            })
     except Exception as e:
-        app.logger.error("search error: %s", e)
-        return jsonify({"error": "Erro na busca"}), 502
+        app.logger.error("OpenLibrary error: %s", e)
+
+    # Google Books — boa cobertura de livros brasileiros
+    try:
+        r = req.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": q, "langRestrict": "pt", "maxResults": 6, "printType": "books"},
+            timeout=10
+        )
+        r.raise_for_status()
+        for item in r.json().get("items", []):
+            info = item.get("volumeInfo", {})
+            title = info.get("title", "")[:200]
+            if not title:
+                continue
+            cover_url = (info.get("imageLinks", {}).get("thumbnail") or
+                         info.get("imageLinks", {}).get("smallThumbnail") or "")
+            if cover_url.startswith("http://"):
+                cover_url = "https://" + cover_url[7:]
+            add_book({
+                "title":   title,
+                "authors": [a[:100] for a in info.get("authors", [])[:3]],
+                "lang":    "pt",
+                "thumb":   cover_url if cover_url.startswith("https://") else "",
+            })
+    except Exception as e:
+        app.logger.error("GoogleBooks error: %s", e)
+
+    if not books:
+        return jsonify({"error": "Nenhum livro encontrado"}), 404
+
+    return jsonify(books[:6])
 
 
 @app.route("/api/summary", methods=["POST"])
