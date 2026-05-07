@@ -428,13 +428,29 @@
         sheet.classList.contains('open') ? closeSheet() : openSheet();
     }
 
-    // ── History ───────────────────────────────────────────────
-    async function loadHistory() {
-        try {
-            const r = await fetch(`${SERVER}/api/history`);
-            historyItems = await r.json();
-            renderHistory();
-        } catch {}
+    // ── History (localStorage) ────────────────────────────────
+    const LS_KEY = 'leitor_history';
+
+    function _lsRead() {
+        try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+        catch { return []; }
+    }
+
+    function _lsSave(arr) {
+        try { localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(0, 10))); }
+        catch {}
+    }
+
+    function pushHistory(entry) {
+        const h = _lsRead().filter(
+            e => !(e.title === entry.title && e.author === entry.author)
+        );
+        _lsSave([entry, ...h]);
+    }
+
+    function loadHistory() {
+        historyItems = _lsRead();
+        renderHistory();
     }
 
     function historyItemHTML(item, i, inSheet) {
@@ -636,8 +652,10 @@
         }
 
         if (summary) {
+            const today = new Date().toISOString().split('T')[0];
+            pushHistory({ date: today, title, author, thumb, summary, lang });
+            loadHistory();
             card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            await loadHistory();
             setActiveHistory(0);
         }
     }
