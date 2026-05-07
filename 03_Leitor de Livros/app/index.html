@@ -72,6 +72,17 @@
         .history-item:hover { background: var(--blue-light); border-left-color: var(--b1); }
         .history-item.active { background: var(--blue-light); border-left-color: var(--b2); }
 
+        .history-item { display: flex; align-items: center; gap: 10px; }
+        .history-cover {
+            width: 30px; height: 42px; border-radius: 3px; flex-shrink: 0;
+            object-fit: cover; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+        }
+        .history-cover-ph {
+            width: 30px; height: 42px; border-radius: 3px; flex-shrink: 0;
+            background: var(--blue-light); display: flex; align-items: center;
+            justify-content: center; font-size: 13px;
+        }
+        .history-item-text { flex: 1; min-width: 0; }
         .history-date { font-size: 10px; color: var(--gray); margin-bottom: 3px; font-variant-numeric: tabular-nums; }
         .history-book-title {
             font-size: 12px; font-weight: 600; color: var(--b2); line-height: 1.35;
@@ -418,11 +429,17 @@
         const click = inSheet
             ? `showFromHistory(${i}); closeSheet();`
             : `showFromHistory(${i})`;
+        const cover = item.thumb
+            ? `<img class="history-cover" src="${esc(item.thumb)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'history-cover-ph\\'>📖</div>'">`
+            : `<div class="history-cover-ph">📖</div>`;
         return `
             <div class="history-item${i === activeHistoryIndex ? ' active' : ''}" onclick="${click}">
-                <div class="history-date">${esc(fmtDate(item.date))}</div>
-                <div class="history-book-title">${esc(item.title)}</div>
-                <div class="history-book-author">${esc(item.author || 'Desconhecido')}</div>
+                ${cover}
+                <div class="history-item-text">
+                    <div class="history-date">${esc(fmtDate(item.date))}</div>
+                    <div class="history-book-title">${esc(item.title)}</div>
+                    <div class="history-book-author">${esc(item.author || 'Desconhecido')}</div>
+                </div>
             </div>`;
     }
 
