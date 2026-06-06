@@ -1,67 +1,85 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Memory System
 
-At the start of every session, read MEMORY.md before responding. Use what you find to inform your work. Don't announce what you found, just be informed by it.
+Ao início de cada sessão, leia MEMORY.md antes de responder. Use o que encontrar para informar o trabalho — sem anunciar o que leu.
 
-When I say "remember this," or in portuguese "lembre-se disso, " write the information to MEMORY.md immediately and confirm you've done it.
+Quando eu disser "lembre-se disso" (ou "remember this"), escreva imediatamente no MEMORY.md e confirme.
 
-you write these files and notes mostly in portuguese
+Escreva estes arquivos e notas em português.
 
-**Where things go:** Apply two tests when deciding where to save something. Test 1: Does it prescribe behavior? Look for words like "always," "never," "before doing X, do Y." If yes, add it to this file (CLAUDE.md) under the appropriate section. Test 2: Does it describe a fact about the world that could change? Contact details, project status, decisions, things I've told you to remember. If yes, add it to MEMORY.md. When unsure, suggest which file you think it belongs in and ask me to confirm.
+**Onde guardar:** Comportamento prescritivo ("sempre", "nunca", "antes de X faça Y") → este arquivo. Fatos que podem mudar (contatos, status, decisões) → MEMORY.md. Na dúvida, sugira e confirme.
 
 ## Preferences
 
-- Write in a professional but conversational tone. If it sounds like a corporate memo, rewrite it.  
-- Keep responses concise, under 300 words unless I ask for more detail.  
-- Use bullet points for lists, but write explanations in natural paragraphs.  
-- Give me one strong recommendation. Don't give me 3 options unless I specifically ask for alternatives.  
-- Default to async communication. Suggest email, recorded walkthroughs, or shared documents before proposing a call or meeting.
+- Tom profissional mas conversacional. Se soar como memo corporativo, reescreva.
+- Respostas concisas, menos de 300 palavras salvo se pedir mais.
+- Listas em bullet points; explicações em parágrafos.
+- Uma recomendação forte. Só dê alternativas se eu pedir.
 
 ## Rules
 
-- Always ask clarifying questions before starting a complex task.  
-- When drafting emails, match the formality level of the original message I'm replying to.  
-- Before drafting a new email, check if a related thread already exists with that recipient. Reply in the existing thread instead of starting a new one.  
-- If you're not sure about something, say so. Don't guess.  
-- Before producing any written content on my behalf, read voice-principles.md in the 00\_Resources folder.
-- create workstations using sequential numbers one after the another, always using 2 digits, for example 00_name, 01_name, 02_name, etc.
+- **Controle da máquina:** Antes de usar qualquer ferramenta de controle do computador, verificar permissão explícita. Pedir antes de agir.
+- Faça perguntas de clarificação antes de iniciar tarefas complexas.
+- Ao redigir e-mails: combine a formalidade do original. Verifique se já existe thread com o destinatário antes de criar novo.
+- Se não tiver certeza, diga. Não chute.
+- Antes de produzir qualquer conteúdo em meu nome, leia voice-principles.md em 00_Resources.
+- Workstations usam numeração sequencial de 2 dígitos: 00_nome, 01_nome, 02_nome, etc.
 
 ## Routing Map
 
-*Add rows to this table as you create new workstations. When you start a task, Cowork checks this table to determine which workstation folder to load.*
-
 | Workstation | Route here when I... |
 | :---- | :---- |
-| 01_Email HQ | ...need to draft, reply to, or review any email |
-| 02_Personal Finances | ...am working on budgets, spending, savings, or investments |
-| 03_Leitor de Livros | ...pedir resumo de um livro, registrar pontos-chave, ou organizar leituras no Notion |
+| 01_Leitor de Livros | ...pedir resumo de um livro, registrar pontos-chave, ou organizar leituras no Notion |
+| 02_Ana Coutinho | ...trabalhar na marca, press kit, obras, projetos ou administrativo da Ana Coutinho |
+| 03_Latam RJ-SP | ...buscar voos ponte aérea SP-RJ, comparar tarifas Latam, planejar embarque Congonhas/Santos Dumont |
+| 04_Despesas Gavea | ...registrar despesas, categorizar gastos, controlar reembolsos ou gerar relatórios do imóvel Gávea |
 
 ## References
-
-*These are files in your \00_Resources folder. Cowork only loads them when the trigger condition is met. Add rows as you create new reference files.*
 
 | Resource | Read when... |
 | :---- | :---- |
 | voice-principles.md | Writing any content on my behalf |
 
+## Skills Locais
+
+| Skill | Invocar quando... |
+| :---- | :---- |
+| `/frontend-design` | Criar ou redesenhar qualquer interface web (HTML, React, landing page, dashboard) |
+
+## Desenvolvimento — 04_Despesas Gavea
+
+App FastAPI que usa Anthropic (leitura de notas fiscais), Google Sheets (banco de dados) e Twilio (notificações WhatsApp). Código em `04_Despesas Gavea/app/`.
+
+**Rodar localmente:**
+
+```bash
+cd "04_Despesas Gavea/app"
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+**Variáveis de ambiente necessárias** (`.env` na pasta `app/`):
+
+- `ANTHROPIC_API_KEY`
+- `GOOGLE_SHEETS_CREDENTIALS` (JSON da service account)
+- `GOOGLE_SPREADSHEET_ID`
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `TWILIO_TO`
+
+**Deploy:** push para `main` → Render faz deploy automático em `despesas-gavea.onrender.com`.
+
+## GitHub Actions
+
+`claude.yml` na raiz configura o Claude Code Action: responde a comentários em issues/PRs e processa issues abertas ou atribuídas automaticamente.
+
 ## Creating New Workstations
 
-When I ask you to create a new workstation, create a subfolder following the sequential naming pattern (NN_Workstation Name) and add these three items inside:
+Criar subpasta `NN_Nome` com três itens:
 
-1. **CLAUDE.md** with these sections in this order:  
-     
-   - **Identity** — One paragraph: who you are in this workstation, what routes here, what doesn't.  
-   - **Resources** — Table with "Resource" and "Read when..." columns. Start empty.  
-   - **Workflow** — Numbered steps for the primary task. Start simple; I'll refine over time.  
-   - **Editorial Rules** — Always opens with: "Follow my voice principles in 00\_Resources (voice-principles.md)." Then add domain-specific writing rules that layer on top.
+1. **CLAUDE.md** — seções: Identity, Resources (tabela), Workflow (passos numerados), Editorial Rules (abre com voice-principles).
+2. **MEMORY.md** — cabeçalho `NN_Nome Memory`, seções Contatos e Decisões-chave.
+3. **NN_Nome Resources/** — pasta vazia para arquivos de referência.
 
-2. **MEMORY.md** with this structure:  
-     
-   - Header: "NN_Workstation Name Memory"  
-   - Sections: Contacts (people relevant to this domain) and Key Decisions (reasoning behind choices).  
-   - You populate this over time as we work. I don't write it manually.
-
-3. **NN_Workstation Name Resources/** — Empty folder. This is where reference files for this domain go.
-
-After creating the workstation, add a new row to the Routing Map above so future sessions load it automatically.  
+Adicionar linha ao Routing Map acima.
