@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de Livros</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="theme-color" content="#1a73e8">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="Leitor de Livros">
+    <meta property="og:description" content="Resumos ricos de livros gerados por IA, em português. Digite o título e leia em segundos.">
+    <meta property="og:image" content="__BASE_URL__/logo-title.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <style>
+        :root {
+            --b1: #4285f4;
+            --b2: #1a73e8;
+            --b3: #0d47a1;
+            --blue-light: #e8f0fe;
+            --text: #202124;
+            --gray: #5f6368;
+            --border: #dadce0;
+            --sidebar-w: 220px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: #fff;
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* ── Layout shell ── */
+        .app-shell { display: flex; min-height: 100vh; }
+
+        /* ── Sidebar (desktop + landscape) ── */
+        .history-panel {
+            width: var(--sidebar-w);
+            flex-shrink: 0;
+            background: #fafafa;
+            border-right: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-heading {
+            display: block;
+            padding: 18px 14px 12px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .history-heading img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .history-heading-text {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        .history-list { flex: 1; padding: 6px 0; }
+
+        .history-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: background .12s, border-color .12s;
+        }
+        .history-item:hover { background: var(--blue-light); border-left-color: var(--b1); }
+        .history-item.active { background: var(--blue-light); border-left-color: var(--b2); }
+
+        .history-item { display: flex; align-items: center; gap: 10px; }
+        .history-cover {
+            width: 30px; height: 42px; border-radius: 3px; flex-shrink: 0;
+            object-fit: cover; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+        }
+        .history-cover-ph {
+            width: 30px; height: 42px; border-radius: 3px; flex-shrink: 0;
+            background: var(--blue-light); display: flex; align-items: center;
+            justify-content: center; font-size: 13px;
+        }
+        .history-item-text { flex: 1; min-width: 0; }
+        .history-date { font-size: 10px; color: var(--gray); margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+        .history-book-title {
+            font-size: 12px; font-weight: 600; color: var(--b2); line-height: 1.35;
+            display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .history-book-author { font-size: 11px; color: var(--gray); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-empty { font-size: 12px; color: var(--gray); padding: 16px; font-style: italic; line-height: 1.5; }
+
+        /* ── Main column ── */
+        .page {
+            flex: 1; min-width: 0;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 0 20px 80px;
+            padding-top: calc(50vh - 160px);
+            transition: padding-top .45s cubic-bezier(.4,0,.2,1);
+        }
+        .page.compact { padding-top: 48px; }
+
+        /* ── Logo ── */
+        .logo { text-align: center; margin-bottom: 38px; user-select: none; }
+        .logo-img { max-width: 480px; width: 90%; height: auto; display: block; margin: 0 auto; }
+        .logo-title-fallback { font-size: 52px; font-weight: 300; letter-spacing: -1px; line-height: 1; }
+        .logo-title-fallback .sp { display: inline-block; width: 18px; }
+        .logo-by { font-size: 13px; color: var(--gray); margin-top: 12px; }
+
+        /* ── Search ── */
+        .search-wrap { width: 100%; max-width: 580px; position: relative; }
+        .search-input {
+            width: 100%; height: 52px; padding: 0 52px 0 24px;
+            border: 1px solid var(--border); border-radius: 26px;
+            font-size: 16px; color: var(--text); background: #fff; outline: none;
+            box-shadow: 0 1px 6px rgba(32,33,36,.1);
+            transition: box-shadow .22s, border-color .22s;
+        }
+        .search-input:hover { box-shadow: 0 2px 10px rgba(26,115,232,.2); border-color: rgba(66,133,244,.45); }
+        .search-input:focus { box-shadow: 0 2px 14px rgba(26,115,232,.28); border-color: var(--b1); }
+        .search-icon { position: absolute; right: 17px; top: 50%; transform: translateY(-50%); color: #9aa0a6; pointer-events: none; }
+
+        /* ── Dropdown ── */
+        .dropdown {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: #fff; border: 1px solid var(--border);
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.13);
+            overflow: hidden; display: none; z-index: 300;
+        }
+        .dropdown.open { display: block; }
+        .search-loading { padding: 18px; text-align: center; }
+        .book-row {
+            display: flex; align-items: center; gap: 14px;
+            padding: 10px 18px; cursor: pointer;
+            border-top: 1px solid #f1f3f4; transition: background .12s;
+        }
+        .book-row:first-child { border-top: none; }
+        .book-row:hover { background: var(--blue-light); }
+
+        /* ── Covers ── */
+        .cover-sm { width: 38px; height: 52px; border-radius: 3px; flex-shrink: 0; object-fit: cover; box-shadow: 0 1px 5px rgba(0,0,0,.18); }
+        .cover-lg { width: 58px; height: 82px; border-radius: 5px; flex-shrink: 0; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+        .cover-placeholder { background: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .cover-lg.cover-placeholder { font-size: 24px; background: var(--b1); }
+
+        .book-row-info { flex: 1; min-width: 0; }
+        .book-row-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .book-row-author { font-size: 12px; color: var(--gray); margin-top: 2px; }
+        .lang-badge { font-size: 10px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--blue-light); color: var(--b2); flex-shrink: 0; }
+
+        /* ── Results ── */
+        .results { width: 100%; max-width: 680px; margin-top: 36px; display: none; }
+        .results.visible { display: block; }
+        .book-header {
+            display: flex; gap: 18px; align-items: flex-start;
+            padding: 18px 20px; border-radius: 16px; margin-bottom: 22px;
+            background: linear-gradient(135deg, var(--blue-light) 0%, #f0f4ff 100%);
+            border: 1px solid rgba(66,133,244,.2);
+        }
+        .book-header-info h2 { font-size: 19px; font-weight: 500; color: var(--b3); line-height: 1.35; }
+        .book-header-info .hdr-author { font-size: 14px; color: var(--gray); margin-top: 5px; }
+        .amazon-link {
+            display: inline-block; margin-top: 11px; font-size: 12px;
+            color: var(--b2); text-decoration: none; padding: 4px 12px;
+            border: 1px solid rgba(26,115,232,.3); border-radius: 12px;
+            transition: background .15s;
+        }
+        .amazon-link:hover { background: rgba(26,115,232,.08); }
+
+        /* ── Loader ── */
+        .loader { text-align: center; padding: 52px 0; }
+        .dots { display: inline-flex; gap: 9px; }
+        .dot { width: 11px; height: 11px; border-radius: 50%; animation: pulse 1.4s infinite ease-in-out; }
+        .dot:nth-child(1) { background: #4285f4; }
+        .dot:nth-child(2) { background: #1a73e8; animation-delay: .18s; }
+        .dot:nth-child(3) { background: #1565c0; animation-delay: .36s; }
+        .dot:nth-child(4) { background: #0d47a1; animation-delay: .54s; }
+        @keyframes pulse { 0%,80%,100% { transform: scale(.55); opacity: .35; } 40% { transform: scale(1); opacity: 1; } }
+        .loader p { margin-top: 18px; color: var(--gray); font-size: 14px; }
+
+        /* ── Summary card ── */
+        .summary-card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 30px 34px; line-height: 1.75; font-size: 15px; }
+        .summary-card h2, .summary-card h3 {
+            font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase;
+            color: var(--b2); margin: 26px 0 11px; padding-bottom: 8px;
+            border-bottom: 1.5px solid var(--blue-light);
+        }
+        .summary-card :is(h2,h3):first-child { margin-top: 0; }
+        .summary-card p { margin-bottom: 10px; }
+        .summary-card ul, .summary-card ol { padding-left: 0; list-style: none; margin-bottom: 10px; }
+        .summary-card li { padding-left: 22px; position: relative; margin-bottom: 9px; }
+        .summary-card li::before { content: ''; position: absolute; left: 4px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: var(--b2); }
+        .summary-card blockquote { border-left: 3px solid var(--b1); margin: 12px 0; padding: 10px 18px; background: var(--blue-light); border-radius: 0 10px 10px 0; color: var(--gray); font-style: italic; }
+        .summary-card strong { color: var(--b3); font-weight: 600; }
+        .error { color: #d93025; text-align: center; padding: 28px; font-size: 14px; }
+
+        /* ── Footer ── */
+        footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--gray); background: rgba(255,255,255,.95); backdrop-filter: blur(4px); padding: 10px 16px; border-top: 1px solid var(--border); line-height: 1.6; }
+
+        /* ── Mobile: floating button ── */
+        .history-fab {
+            display: none;
+            position: fixed;
+            bottom: 64px;
+            right: 18px;
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            background: var(--b2);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(26,115,232,.45);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .history-fab:active { transform: scale(.93); box-shadow: 0 2px 8px rgba(26,115,232,.35); }
+        .history-fab .fab-badge {
+            position: absolute; top: 6px; right: 6px;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #ea4335; color: #fff;
+            font-size: 9px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            display: none;
+        }
+        .history-fab .fab-badge.visible { display: flex; }
+
+        /* ── Mobile: overlay ── */
+        .sheet-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.4);
+            z-index: 350;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s;
+        }
+        .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+
+        /* ── Mobile: bottom sheet ── */
+        .history-sheet {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 28px rgba(0,0,0,.18);
+            z-index: 400;
+            max-height: 65vh;
+            overflow: hidden;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform .32s cubic-bezier(.4,0,.2,1);
+        }
+        .history-sheet.open { transform: translateY(0); }
+
+        .sheet-handle-bar {
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            padding: 12px 0 4px;
+            cursor: grab;
+        }
+        .sheet-handle-bar span {
+            width: 36px; height: 4px;
+            background: var(--border); border-radius: 2px;
+        }
+        .sheet-heading {
+            flex-shrink: 0;
+            padding: 8px 20px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sheet-heading img { max-width: 220px; width: 100%; height: auto; }
+        .sheet-heading-text { font-size: 13px; font-weight: 700; color: var(--b3); }
+
+        .sheet-list { overflow-y: auto; flex: 1; padding: 6px 0 24px; }
+        .sheet-list .history-item { padding: 12px 20px; border-left: none; border-radius: 0; }
+        .sheet-list .history-item:hover { border-left: none; }
+        .sheet-list .history-date { font-size: 11px; }
+        .sheet-list .history-book-title { font-size: 13px; }
+        .sheet-list .history-book-author { font-size: 12px; }
+
+        /* ── Responsive breakpoints ── */
+
+        /* Tablets + landscape phones: keep sidebar, maybe narrower */
+        @media (max-width: 860px) {
+            :root { --sidebar-w: 185px; }
+        }
+
+        /* Portrait phones: persistent bottom sheet in peek state */
+        @media (orientation: portrait) and (max-width: 767px) {
+            .history-panel { display: none; }
+            .history-fab { display: none; }
+            .sheet-overlay { display: block; }
+            .history-sheet {
+                display: flex;
+                transform: translateY(calc(100% - 80px));
+            }
+            .sheet-handle-bar { cursor: pointer; }
+            .sheet-heading { cursor: pointer; }
+            .page { padding-top: calc(50vh - 140px); padding-bottom: 100px; }
+            .logo-img { max-width: 85vw; }
+            .summary-card { padding: 22px 18px; }
+            .search-wrap { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+    <!-- ── Sidebar desktop / landscape ── -->
+    <aside class="history-panel">
+        <div class="history-heading">
+            <img src="/hist-title.png" alt="Últimos 10 livros"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <span class="history-heading-text" style="display:none">Últimos 10 livros</span>
+        </div>
+        <div class="history-list" id="historyList">
+            <p class="history-empty">Nenhum livro ainda.</p>
+        </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <div class="page" id="page">
+
+        <div class="logo">
+            <img class="logo-img" src="/logo-title.png" alt="Leitor de Livros"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <div class="logo-title-fallback" style="display:none">
+                <span style="color:#4285f4">L</span><span style="color:#0d47a1">e</span><span style="color:#1976d2">i</span><span style="color:#1a73e8">t</span><span style="color:#1565c0">o</span><span style="color:#2962ff">r</span>
+                <span class="sp"></span>
+                <span style="color:#0d47a1">d</span><span style="color:#1976d2">e</span>
+                <span class="sp"></span>
+                <span style="color:#4285f4">L</span><span style="color:#1565c0">i</span><span style="color:#1a73e8">v</span><span style="color:#1976d2">r</span><span style="color:#0d47a1">o</span><span style="color:#2962ff">s</span>
+            </div>
+            <div class="logo-by">by Rogerio Barreto</div>
+        </div>
+
+        <div class="search-wrap">
+            <input id="searchInput" class="search-input" type="text" placeholder="Título do Livro" autocomplete="off" spellcheck="false" maxlength="100"/>
+            <svg class="search-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <div class="dropdown" id="dropdown"></div>
+        </div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+</div>
+
+<!-- ── Mobile FAB ── -->
+<button class="history-fab" id="historyFab" onclick="openSheet()" aria-label="Histórico de leituras">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+    <span class="fab-badge" id="fabBadge"></span>
+</button>
+
+<!-- ── Mobile bottom sheet ── -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="history-sheet" id="historySheet">
+    <div class="sheet-handle-bar" onclick="toggleSheet()"><span></span></div>
+    <div class="sheet-heading" onclick="toggleSheet()">
+        <img src="/hist-title.png" alt="Últimos 10 livros"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <span class="sheet-heading-text" style="display:none">Últimos 10 livros</span>
+    </div>
+    <div class="sheet-list" id="historySheetList">
+        <p class="history-empty">Nenhum livro ainda.</p>
+    </div>
+</div>
+
+<footer>
+    Leitor de Livros &mdash; by Rogerio Barreto &nbsp;·&nbsp;
+    <span>Como afiliado Amazon, recebo uma comissão por compras qualificadas feitas através dos links deste site.</span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.3/dist/purify.min.js"></script>
+<script>
+    const SERVER = '';
+    let timer, books = [], historyItems = [], activeHistoryIndex = -1;
+
+    const input    = document.getElementById('searchInput');
+    const dropdown = document.getElementById('dropdown');
+    const results  = document.getElementById('results');
+    const page     = document.getElementById('page');
+
+    marked.use({ breaks: true, gfm: true });
+    const render = md => DOMPurify.sanitize(marked.parse(md));
+
+    const esc = s => String(s).replace(/[&<>"']/g, c =>
+        ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])
+    );
+
+    function fmtDate(iso) {
+        const [, m, d] = iso.split('-');
+        const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        return `${parseInt(d)} ${months[parseInt(m) - 1]}`;
+    }
+
+    // ── Sheet (mobile) ────────────────────────────────────────
+    function openSheet() {
+        document.getElementById('historySheet').classList.add('open');
+        document.getElementById('sheetOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSheet() {
+        document.getElementById('historySheet').classList.remove('open');
+        document.getElementById('sheetOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    function toggleSheet() {
+        const sheet = document.getElementById('historySheet');
+        sheet.classList.contains('open') ? closeSheet() : openSheet();
+    }
+
+    // ── History (localStorage) ────────────────────────────────
+    const LS_KEY = 'leitor_history';
+
+    function _lsRead() {
+        try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+        catch { return []; }
+    }
+
+    function _lsSave(arr) {
+        try { localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(0, 10))); }
+        catch {}
+    }
+
+    function pushHistory(entry) {
+        const h = _lsRead().filter(
+            e => !(e.title === entry.title && e.author === entry.author)
+        );
+        _lsSave([entry, ...h]);
+    }
+
+    function loadHistory() {
+        historyItems = _lsRead();
+        renderHistory();
+    }
+
+    function historyItemHTML(item, i, inSheet) {
+        const click = inSheet
+            ? `showFromHistory(${i}); closeSheet();`
+            : `showFromHistory(${i})`;
+        const cover = item.thumb
+            ? `<img class="history-cover" src="${esc(item.thumb)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'history-cover-ph\\'>📖</div>'">`
+            : `<div class="history-cover-ph">📖</div>`;
+        return `
+            <div class="history-item${i === activeHistoryIndex ? ' active' : ''}" onclick="${click}">
+                ${cover}
+                <div class="history-item-text">
+                    <div class="history-date">${esc(fmtDate(item.date))}</div>
+                    <div class="history-book-title">${esc(item.title)}</div>
+                    <div class="history-book-author">${esc(item.author || 'Desconhecido')}</div>
+                </div>
+            </div>`;
+    }
+
+    function renderHistory() {
+        const empty = '<p class="history-empty">Nenhum livro ainda.</p>';
+        const sideHTML  = historyItems.length ? historyItems.map((it, i) => historyItemHTML(it, i, false)).join('') : empty;
+        const sheetHTML = historyItems.length ? historyItems.map((it, i) => historyItemHTML(it, i, true)).join('')  : empty;
+
+        document.getElementById('historyList').innerHTML      = sideHTML;
+        document.getElementById('historySheetList').innerHTML = sheetHTML;
+
+        // FAB badge
+        const badge = document.getElementById('fabBadge');
+        if (historyItems.length) {
+            badge.textContent = historyItems.length;
+            badge.classList.add('visible');
+        } else {
+            badge.classList.remove('visible');
+        }
+    }
+
+    function setActiveHistory(i) {
+        activeHistoryIndex = i;
+        renderHistory();
+    }
+
+    function showFromHistory(i) {
+        const item = historyItems[i];
+        if (!item) return;
+
+        const amzURL = `/go/amz?q=${encodeURIComponent(`${item.title} ${item.author}`)}&l=${item.lang}`;
+
+        input.value = item.title;
+        page.classList.add('compact');
+        setActiveHistory(i);
+
+        results.innerHTML = `
+            <div class="book-header">
+                ${coverLg(item.thumb)}
+                <div class="book-header-info">
+                    <h2>${esc(item.title)}</h2>
+                    <div class="hdr-author">${esc(item.author || 'Desconhecido')}</div>
+                    <a class="amazon-link" href="${esc(amzURL)}" target="_blank" rel="noopener noreferrer">🛒 Ver na Amazon</a>
+                </div>
+            </div>
+            <div class="summary-card">${render(item.summary)}</div>`;
+        results.classList.add('visible');
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Search ────────────────────────────────────────────────
+    input.addEventListener('input', () => {
+        clearTimeout(timer);
+        const q = input.value.trim();
+        if (q.length < 3) { closeDD(); return; }
+        timer = setTimeout(() => search(q), 380);
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) closeDD(); });
+    input.addEventListener('keydown', e => { if (e.key === 'Escape') closeDD(); });
+
+    function showSearchLoader() {
+        dropdown.innerHTML = `<div class="search-loading"><div class="dots">
+            <div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+        </div></div>`;
+        dropdown.classList.add('open');
+    }
+
+    async function search(q) {
+        showSearchLoader();
+        try {
+            const r = await fetch(`${SERVER}/api/search?q=${encodeURIComponent(q)}`);
+            const d = await r.json();
+            books = Array.isArray(d) ? d : [];
+            renderDD(books);
+        } catch { closeDD(); }
+    }
+
+    function coverSm(src) {
+        return src
+            ? `<img class="cover-sm" src="${esc(src)}" alt="" onerror="this.className='cover-sm cover-placeholder';this.textContent='📖'">`
+            : `<div class="cover-sm cover-placeholder">📖</div>`;
+    }
+    function coverLg(src) {
+        return src
+            ? `<img class="cover-lg" src="${esc(src)}" alt="capa" onerror="this.className='cover-lg cover-placeholder';this.textContent='📖'">`
+            : `<div class="cover-lg cover-placeholder">📖</div>`;
+    }
+
+    function renderDD(list) {
+        if (!list.length) { closeDD(); return; }
+        dropdown.innerHTML = list.map((b, i) => `
+            <div class="book-row" onclick="pick(${i})">
+                ${coverSm(b.thumb)}
+                <div class="book-row-info">
+                    <div class="book-row-title">${esc(b.title)}</div>
+                    <div class="book-row-author">${esc((b.authors||[]).slice(0,2).join(', ')||'Desconhecido')}</div>
+                </div>
+                <span class="lang-badge">${b.lang==='pt'?'PT-BR':'EN'}</span>
+            </div>`).join('');
+        dropdown.classList.add('open');
+    }
+    function closeDD() { dropdown.classList.remove('open'); }
+
+    // ── Pick & summary ────────────────────────────────────────
+    async function pick(i) {
+        const b      = books[i];
+        const title  = b.title  || 'Sem título';
+        const author = (b.authors||[]).join(', ') || 'Desconhecido';
+        const lang   = b.lang   || 'en';
+        const thumb  = b.thumb  || '';
+        const amzURL = `/go/amz?q=${encodeURIComponent(`${title} ${author}`)}&l=${lang}`;
+
+        closeDD();
+        input.value = title;
+        page.classList.add('compact');
+        activeHistoryIndex = -1;
+        renderHistory();
+
+        results.innerHTML = `
+            <div class="book-header">
+                ${coverLg(thumb)}
+                <div class="book-header-info">
+                    <h2>${esc(title)}</h2>
+                    <div class="hdr-author">${esc(author)}</div>
+                    <a class="amazon-link" href="${esc(amzURL)}" target="_blank" rel="noopener noreferrer">🛒 Ver na Amazon</a>
+                </div>
+            </div>
+            <div id="loader" class="loader">
+                <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                <p>Gerando resumo...</p>
+            </div>
+            <div id="summaryCard" class="summary-card" style="display:none"></div>`;
+        results.classList.add('visible');
+        await getSummary(title, author, lang, thumb);
+    }
+
+    async function getSummary(title, author, lang, thumb) {
+        const loader = document.getElementById('loader');
+        const card   = document.getElementById('summaryCard');
+        let   summary = '';
+
+        try {
+            const res = await fetch(`${SERVER}/api/summary`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, author, lang, thumb })
+            });
+
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                throw new Error(d.error || `Erro ${res.status} no servidor`);
+            }
+
+            const reader  = res.body.getReader();
+            const decoder = new TextDecoder();
+            let   buf     = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop();
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const d = JSON.parse(line.slice(6));
+                    if (d.error) throw new Error(d.error);
+                    if (d.chunk) {
+                        if (!summary) {
+                            loader.style.display = 'none';
+                            card.style.display = 'block';
+                        }
+                        summary += d.chunk;
+                        card.innerHTML = render(summary);
+                    }
+                }
+            }
+        } catch (err) {
+            loader.innerHTML = `<p class="error"><strong>Erro:</strong> ${esc(err.message)}</p>`;
+            return;
+        }
+
+        if (summary) {
+            const today = new Date().toISOString().split('T')[0];
+            pushHistory({ date: today, title, author, thumb, summary, lang });
+            loadHistory();
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setActiveHistory(0);
+        }
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    loadHistory();
+</script>
+</body>
+</html>

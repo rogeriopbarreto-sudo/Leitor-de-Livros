@@ -1,0 +1,244 @@
+import os
+import re
+import json
+import threading
+from datetime import date
+from pathlib import Path
+from urllib.parse import urlencode
+from flask import Flask, request, jsonify, send_from_directory, redirect, Response, stream_with_context
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import anthropic
+import requests as req
+from dotenv import load_dotenv
+
+dotenv_path = Path(__file__).parent / ".env"
+if not dotenv_path.exists():
+    dotenv_path = Path(__file__).parent.parent / "Leitor de Livros Resources" / ".env"
+load_dotenv(dotenv_path)
+
+HISTORY_FILE = Path(__file__).parent / "history.json"
+_history_lock = threading.Lock()
+
+def _load_history():
+    try:
+        if HISTORY_FILE.exists():
+            return json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+def _save_history(entries):
+    try:
+        HISTORY_FILE.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        app.logger.error("history write error: %s", e)
+
+def _add_to_history(entry):
+    with _history_lock:
+        h = _load_history()
+        h = [e for e in h if not (e.get("title") == entry["title"] and e.get("author") == entry["author"])]
+        h.insert(0, entry)
+        _save_history(h[:10])
+
+app = Flask(__name__, static_folder=".")
+
+limiter = Limiter(
+    get_remote_address, app=app,
+    default_limits=["200 per day", "30 per minute"],
+    storage_uri="memory://"
+)
+
+SYSTEM_PROMPT = """Você é um sintetizador de livros especializado. Crie resumos ricos e densos em português, independente do idioma original.
+
+Estruture com estas quatro seções (use ## para os títulos):
+
+## Resumo Geral
+Parágrafo de 5 a 8 linhas com a essência e proposta central do livro.
+
+## Pontos-Chave
+Entre 6 e 10 bullet points concisos. Cada ponto com substância real, sem paráfrases vagas.
+
+## Citações Marcantes
+Ideias ou frases mais impactantes em blockquote (> ...). Citações diretas ou paráfrases fiéis.
+
+## Aplicações Práticas
+4 a 6 bullet points específicos e acionáveis para o dia a dia.
+
+Regras: nao pule nenhum item acima, quero as 4 secoes sempre.  seja denso em conteúdo. Varie os verbos: propõe, demonstra, questiona, defende, mostra, explora, revela. Não repita "o autor argumenta que" mais de uma vez. Sem avaliação pessoal."""
+
+
+@app.after_request
+def security_headers(r):
+    r.headers["X-Content-Type-Options"] = "nosniff"
+    r.headers["X-Frame-Options"] = "DENY"
+    r.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    r.headers["X-XSS-Protection"] = "1; mode=block"
+    return r
+
+
+@app.route("/")
+def index():
+    html = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
+    base = request.url_root.rstrip("/")
+    return html.replace("__BASE_URL__", base), 200, {"Content-Type": "text/html; charset=utf-8"}
+
+
+@app.route("/favicon.svg")
+def serve_favicon():
+    return send_from_directory(".", "favicon.svg", mimetype="image/svg+xml")
+
+
+@app.route("/logo-title.png")
+def serve_logo():
+    return send_from_directory(".", "logo-title.png")
+
+
+@app.route("/hist-title.png")
+def serve_hist():
+    return send_from_directory(".", "hist-title.png")
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+AMZ_TAG = {"pt": "rbarreto04-20", "en": "rbarreto760b-20"}
+AMZ_BASE = {"pt": "https://www.amazon.com.br/s", "en": "https://www.amazon.com/s"}
+
+@app.route("/go/amz")
+def go_amz():
+    q    = request.args.get("q", "").strip()[:300]
+    lang = "pt" if request.args.get("l", "en") == "pt" else "en"
+    return redirect(f"{AMZ_BASE[lang]}?{urlencode({'k': q, 'tag': AMZ_TAG[lang]})}", 302)
+
+
+@app.route("/api/history")
+def history_list():
+    with _history_lock:
+        return jsonify(_load_history())
+
+
+def _norm_title(s):
+    return re.sub(r'\W+', ' ', s.lower()).strip()[:50]
+
+
+@app.route("/api/search")
+@limiter.limit("30 per minute")
+def search():
+    q = request.args.get("q", "").strip()[:100]
+    if not q:
+        return jsonify([])
+
+    books = []
+    seen = set()
+
+    def add_book(b):
+        key = _norm_title(b["title"])
+        if key and key not in seen:
+            seen.add(key)
+            books.append(b)
+
+    # Open Library
+    try:
+        r = req.get(
+            "https://openlibrary.org/search.json",
+            params={"q": q, "limit": 6, "fields": "title,author_name,language,cover_i"},
+            timeout=10
+        )
+        r.raise_for_status()
+        for d in r.json().get("docs", []):
+            add_book({
+                "title":   d.get("title", "")[:200],
+                "authors": [a[:100] for a in d.get("author_name", [])[:3]],
+                "lang":    "pt" if any(l in ("por", "pt") for l in d.get("language", [])) else "en",
+                "thumb":   f"https://covers.openlibrary.org/b/id/{d['cover_i']}-M.jpg" if d.get("cover_i") else "",
+            })
+    except Exception as e:
+        app.logger.error("OpenLibrary error: %s", e)
+
+    if not books:
+        return jsonify({"error": "Nenhum livro encontrado"}), 404
+
+    return jsonify(books[:6])
+
+
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@app.route("/api/summary", methods=["POST"])
+@limiter.limit("5 per minute;50 per day")
+def summary():
+    data      = request.get_json(force=True, silent=True) or {}
+    title     = str(data.get("title",  "")).strip()[:200]
+    author    = str(data.get("author", "")).strip()[:200]
+    lang      = "pt" if str(data.get("lang", "")).strip() == "pt" else "en"
+    thumb_raw = str(data.get("thumb",  "")).strip()[:500]
+    thumb     = thumb_raw if thumb_raw.startswith("https://") else ""
+
+    if not title:
+        return jsonify({"error": "Título obrigatório"}), 400
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        app.logger.error("summary: missing ANTHROPIC_API_KEY")
+        return jsonify({"error": "Chave API não configurada"}), 500
+
+    lang_label = "Português (Brasil)" if lang == "pt" else "Inglês"
+
+    def generate():
+        chunks = []
+        try:
+            client = anthropic.Anthropic(api_key=api_key, max_retries=0, timeout=120.0)
+            with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=2048,
+                system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+                messages=[{"role": "user", "content": f'Livro: "{title}"\nAutor: {author}\nIdioma: {lang_label}'}]
+            ) as stream:
+                for text in stream.text_stream:
+                    chunks.append(text)
+                    yield _sse({"chunk": text})
+
+        except anthropic.AuthenticationError:
+            yield _sse({"error": "Chave API inválida"})
+            return
+        except anthropic.RateLimitError:
+            yield _sse({"error": "Limite Anthropic atingido. Aguarde alguns minutos."})
+            return
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError):
+            yield _sse({"error": "Tempo limite excedido. Tente novamente."})
+            return
+        except Exception:
+            app.logger.exception("summary stream error")
+            yield _sse({"error": "Erro interno no servidor"})
+            return
+
+        summary_text = "".join(chunks)
+        if summary_text:
+            try:
+                _add_to_history({
+                    "date":    date.today().isoformat(),
+                    "title":   title,
+                    "author":  author,
+                    "thumb":   thumb,
+                    "summary": summary_text,
+                    "lang":    lang,
+                })
+            except Exception:
+                app.logger.exception("history add error")
+
+        yield _sse({"done": True})
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
+
+if __name__ == "__main__":
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(port=5000, debug=debug)

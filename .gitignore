@@ -1,0 +1,19 @@
+# Segredos — NUNCA commitar
+.env
+*.env
+**/Leitor de Livros Resources/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Estado runtime (efêmero no container)
+history.json
